@@ -116,12 +116,21 @@
 			<groupId>sc.fiji</groupId>
 			<artifactId>fiji</artifactId>
 		</dependency>
-		<!-- https://mvnrepository.com/artifact/ome/bio-formats_plugins -->
+		
+		<!-- https://mvnrepository.com/artifact/ome/bioformats_package -->
 		<dependency>
+    		<groupId>ome</groupId>
+    		<artifactId>bioformats_package</artifactId>
+    		<version>7.0.0</version>
+    		<type>pom</type>
+		</dependency>
+		
+		<!-- https://mvnrepository.com/artifact/ome/bio-formats_plugins 
+	 	<dependency>
     		<groupId>ome</groupId>
     		<artifactId>bio-formats_plugins</artifactId>
     	</dependency>
-		
+		 -->
 		<dependency>
   			<groupId>io.scif</groupId>
   			<artifactId>scifio</artifactId>
