@@ -45,6 +45,8 @@ import ij.ImagePlus;
 
 import ij.gui.Roi;
 import ij.gui.WaitForUserDialog;
+import ij.measure.ResultsTable;
+import ij.plugin.filter.Analyzer;
 import ij.plugin.frame.RoiManager;
 import ij.process.ImageProcessor;
 import ij.process.ImageStatistics;
@@ -81,17 +83,17 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
 	@Parameter(label = "Channel 3", choices = { "Blue", "Green", "Red", "NotUsed"}, autoFill = false)
 	private String channelnumC = "Red";
 	
-	@Parameter(label = "Channel 4", choices = { "Blue", "Green", "Red", "NotUsed"}, autoFill = false)
-	private String channelnumD = "NotUsed";
+	//@Parameter(label = "Channel 4", choices = { "Blue", "Green", "Red", "NotUsed"}, autoFill = false)
+	//private String channelnumD = "NotUsed";
 	
 	@Parameter(label = "Which colour channel has objects", autoFill = false)
 	private String activeChannel = "Blue";
 	
-	@Parameter(label = "Minimum Spot Size", autoFill = false)
-	private int activeMinSpotSize = 5;
+	//@Parameter(label = "Minimum Spot Size", autoFill = false)
+	//private int activeMinSpotSize = 5;
 	
-	@Parameter(label = "MaximumSpot Size", autoFill = false)
-	private int activeMaxSpotSize = 250;
+	@Parameter(label = "Size of Spot", autoFill = false)
+	private int activeMaxSpotSize = 6;
 	
 	@Parameter
 	private DisplayService impDisplay;
@@ -117,7 +119,7 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
     int x;
     int y;
     ImagePlus labelImage;
-
+    Boolean firstRun;
     RoiManager rm;
     
     @SuppressWarnings("unchecked")
@@ -145,7 +147,7 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
         RandomAccessibleInterval<T> ChannelOne = null;
         RandomAccessibleInterval<T> ChannelTwo = null;
         RandomAccessibleInterval<T> ChannelThree = null;
-        RandomAccessibleInterval<T> ChannelFour = null;
+   //     RandomAccessibleInterval<T> ChannelFour = null;
         if(channelnumA.equals("Blue")) {
         	ChannelOne = projectedImages.get(0);
         }
@@ -155,9 +157,9 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
         if(channelnumA.equals("Red")) {
         	ChannelThree = projectedImages.get(0);
         }
-        if(channelnumA.equals("NotUsed")) {
-        	ChannelFour = projectedImages.get(0);
-        }
+   //     if(channelnumA.equals("NotUsed")) {
+    //    	ChannelFour = projectedImages.get(0);
+   //     }
         
         if(channelnumB.equals("Blue")) {
         	ChannelOne = projectedImages.get(1);
@@ -168,9 +170,9 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
         if(channelnumB.equals("Red")) {
         	ChannelThree = projectedImages.get(1);
         }
-        if(channelnumB.equals("NotUsed")) {
-        	ChannelFour = projectedImages.get(1);
-        }
+   //     if(channelnumB.equals("NotUsed")) {
+   //     	ChannelFour = projectedImages.get(1);
+   //     }
         
         if(channelnumC.equals("Blue")) {
         	ChannelOne = projectedImages.get(2);
@@ -181,10 +183,10 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
         if(channelnumC.equals("Red")) {
         	ChannelThree = projectedImages.get(2);
         }
-        if(channelnumC.equals("NotUsed")) {
-        	ChannelFour = projectedImages.get(2);
-        }
-        
+ //       if(channelnumC.equals("NotUsed")) {
+  //      	ChannelFour = projectedImages.get(2);
+   //     }
+  /*      
         if(channelnumD.equals("Blue")) {
         	ChannelOne = projectedImages.get(3);
         }
@@ -197,6 +199,9 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
         if(channelnumD.equals("NotUsed")) {
         	ChannelFour = projectedImages.get(3);
         }
+        
+     */
+        firstRun =true;
         labelImage = ImageJFunctions.wrap((RandomAccessibleInterval<T>) ChannelTwo,"Labelled Green Image");
 		labelImage.show();
 		
@@ -363,8 +368,6 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
     	//Loop through all the split regions of interest found from the GFP channel
     	for (int x=0;x<roiNum.size();x++) {
     		
-    	//	IterableInterval<T> theBlueChannel = (IterableInterval<T>) ChannelOne;
-    		IterableInterval<T> theRedChannel = (IterableInterval<T>) ChannelThree;
     		IterableInterval<T> theGreenChannel = (IterableInterval<T>) ChannelTwo;
            	Roi roi = rm.getRoi(roiNum.get(x)-1);
         	rm.select(roiNum.get(x)-1);
@@ -374,149 +377,111 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
         	RandomAccessibleOnRealRandomAccessible<BoolType> discreteROI = Views.raster(Masks.toRealRandomAccessible(mask));
         	// Apply finite bounds to the discrete ROI.
 
-        	IntervalView<BoolType> boundedDiscreteROIRed = Views.interval(discreteROI, theRedChannel);
+      
         	IntervalView<BoolType> boundedDiscreteROIGreen = Views.interval(discreteROI, theGreenChannel);
         	// Create an iterable version of the finite discrete ROI.
-        	IterableRegion<BoolType> iterableROIRed = Regions.iterable(boundedDiscreteROIRed);
         	IterableRegion<BoolType> iterableROIGreen = Regions.iterable(boundedDiscreteROIGreen);
         	
-        	IterableInterval<T> therfpResultingPixels = Regions.sample(iterableROIRed, (RandomAccessible<T>) theRedChannel); //Pixels from red channel
+        
         	IterableInterval<T> thegfpResultingPixels = Regions.sample(iterableROIGreen, (RandomAccessible<T>) theGreenChannel);  //Pixels from green channel
-        	Histogram1d<T> histogram = ij.op().image().histogram(thegfpResultingPixels);
-       		CheckForSpots(histogram, therfpResultingPixels, thegfpResultingPixels, theRedChannel, theGreenChannel, x);
+    		CheckForSpots(thegfpResultingPixels, ChannelTwo, ChannelThree, x);
+        	
     	}
     }
     
-    private void CheckForSpots(Histogram1d<T>histogram, IterableInterval<T> therfpResultingPixels, IterableInterval<T> thegfpResultingPixels, IterableInterval<T>theRedChannel, IterableInterval<T>theGreenChannel, int x ) {
-		
-   // 	uiService.show(theGreenChannel);
-    	T thresholdValue = opService.threshold().otsu(histogram);
-    	double threshLimit = thresholdValue.getRealDouble()+15;
-    	ArrayList<double[]> rankedRedPixelsPosition = new ArrayList<double[]>();
-    	ArrayList<Double> redpixelIntensity = new ArrayList<>();
-    	ArrayList<double[]> rankedGreenPixelsPosition = new ArrayList<double[]>();
-    	ArrayList<Double> greenpixelIntensity = new ArrayList<>();
+    private void CheckForSpots(IterableInterval<T> thegfpResultingPixels, RandomAccessibleInterval<T> ChannelTwo, RandomAccessibleInterval<T> ChannelThree, int x ) {
+    	
+   
+    	double highestValue=0;
+    
     	
     	//Assign cursor to iterate through the pixels within ROI
-		Cursor<T> cursorRFP = therfpResultingPixels.localizingCursor();
+	
 		Cursor<T> cursorGFP = thegfpResultingPixels.localizingCursor();
-		cursorRFP.fwd();
+	
 		cursorGFP.fwd();
-		
+		double [] Positions = new double[2];
+		//Find Brightest Pixel
 		for (int y=0;y<thegfpResultingPixels.size();y++) {
-			cursorRFP.fwd();
+	
 			cursorGFP.fwd();
-			if(cursorGFP.get().getRealDouble()>threshLimit) {
-				double [] Positions = cursorGFP.positionAsDoubleArray(); //Read xy coordinates of pixel
-				redpixelIntensity.add(cursorRFP.get().getRealDouble());
-				rankedRedPixelsPosition.add(Positions);
-				greenpixelIntensity.add(cursorGFP.get().getRealDouble());
-				rankedGreenPixelsPosition.add(Positions);
+		
+			if(cursorGFP.get().getRealDouble()>highestValue) {
+				highestValue = cursorGFP.get().getRealDouble();
+				if (Positions.length>1) {
+					Positions = new double[2];
+				}
+				Positions = cursorGFP.positionAsDoubleArray(); //Read xy coordinates of pixel
 			}
 		}
+		//MeasureGreen
+		ImagePlus impGreen = ImageJFunctions.wrap(ChannelTwo,"Green");
+		impGreen.show();
+		IJ.run(impGreen, "Enhance Contrast", "saturated=0.35");
+		int xPos = (int) Positions[0]-(activeMaxSpotSize/3);
+		int yPos = (int) Positions[1]-(activeMaxSpotSize/3);
+		impGreen.setRoi(xPos, yPos, activeMaxSpotSize, activeMaxSpotSize);
+		IJ.run("Set Measurements...", "area mean standard modal min centroid median redirect=None decimal=2");
+		IJ.run(impGreen, "Measure", "");
+		ResultsTable rt = new ResultsTable();	
+		rt = Analyzer.getResultsTable();
+		double spotMeanG = rt.getValueAsDouble(1, 0);
+		double spotModeG = rt.getValueAsDouble(3, 0);
+		double spotMinG = rt.getValueAsDouble(4, 0);
+		double spotMaxG = rt.getValueAsDouble(5, 0);
+		double spotMedianG = rt.getValueAsDouble(21, 0);
+		ClearResults();
 		
+		//MeasureRed
+		ImagePlus impRed = ImageJFunctions.wrap(ChannelThree,"Red");
+		impRed.show();
+		IJ.run(impRed, "Enhance Contrast", "saturated=0.35");
+		xPos = (int) Positions[0]-(activeMaxSpotSize/3);
+		yPos = (int) Positions[1]-(activeMaxSpotSize/3);
+		impRed.setRoi(xPos, yPos, activeMaxSpotSize, activeMaxSpotSize);
+		IJ.run("Set Measurements...", "area mean standard modal min centroid median redirect=None decimal=2");
+		IJ.run(impRed, "Measure", "");
+		rt = Analyzer.getResultsTable();
+		double spotMeanR = rt.getValueAsDouble(1, 0);
+		double spotModeR = rt.getValueAsDouble(3, 0);
+		double spotMinR = rt.getValueAsDouble(4, 0);
+		double spotMaxR = rt.getValueAsDouble(5, 0);
+		double spotMedianR = rt.getValueAsDouble(21, 0);
 		
-		nearestNeighbours(rankedRedPixelsPosition, rankedGreenPixelsPosition, redpixelIntensity, greenpixelIntensity, x);
-		
-    }
-    
-    @SuppressWarnings("unchecked")
-	public void nearestNeighbours(ArrayList<double[]> rankedRfpPixelsPosition, ArrayList<double[]> rankedGfpPixelsPosition, ArrayList<Double>pixelRfpIntensity, ArrayList<Double>pixelGfpIntensity, int x) {	
-    	int xPosition = 0;
-		int yPosition = 0;
-		int rfpIntensity;
-		int gfpIntensity;
-		ArrayList<ArrayList<int[]>> foundRfpRegions = new ArrayList<>();
-		ArrayList<int[]> currentRfpRegion = new ArrayList<>();
-		ArrayList<ArrayList<int[]>> foundGfpRegions = new ArrayList<>();
-		ArrayList<int[]> currentGfpRegion = new ArrayList<>();
-		
-		List<Integer> usedCoordinates = new ArrayList<>();
-		boolean exitLoop = false;
-		int counter=0;
-		if (rankedRfpPixelsPosition.size()>0) {
-			do {
-				double[] pos = rankedRfpPixelsPosition.get(counter);
-				xPosition = (int)pos[0];
-				yPosition = (int)pos[1];
-				rfpIntensity = (int) Math.round(pixelRfpIntensity.get(counter));
-				gfpIntensity = (int) Math.round(pixelGfpIntensity.get(counter));
-    		
-				if(counter<1) {
-					currentRfpRegion.add(new int[] {xPosition,yPosition, rfpIntensity});
-					currentGfpRegion.add(new int[] {xPosition,yPosition, gfpIntensity});  			
-					usedCoordinates.add(counter);
-				}
-    	
-				//Search currentRegion for close pixels
-				for (int a=0;a<currentRfpRegion.size();a++) {
-					int X = currentRfpRegion.get(a)[0];
-					int Y = currentRfpRegion.get(a)[1];
-					if ((X==(xPosition-1) || X==(xPosition+1) || X==(xPosition)) && (Y==(yPosition-1) || Y==(yPosition+1) || Y==(yPosition))) {
-        			
-						//Check to make sure it hasn't already been used and add to list
-						if (usedCoordinates.contains(counter)==false) {
-							currentRfpRegion.add(new int [] {xPosition, yPosition, rfpIntensity});
-							currentGfpRegion.add(new int [] {xPosition, yPosition, gfpIntensity});					
-							usedCoordinates.add(counter);
-							break;
-						}
-					}
-				}
-				if (counter==rankedRfpPixelsPosition.size()-1) {
-					//Clone current region into the found regions array
-					foundRfpRegions.add((ArrayList<int[]>)currentRfpRegion.clone());
-					foundGfpRegions.add((ArrayList<int[]>)currentGfpRegion.clone()); 		
-  
-					//Add points to labelled image
-					ImageProcessor labelProcessor = labelImage.getProcessor();  
-					for (int a=0;a<foundGfpRegions.size();a++) {
-						ArrayList<int[]> roiGFPSpot = foundRfpRegions.get(a);
-						if (roiGFPSpot.size()>=activeMinSpotSize && roiGFPSpot.size()<=activeMaxSpotSize) {
-							for(int b=0;b<roiGFPSpot.size();b++) {
-								int[]  Pos = roiGFPSpot.get(b);
-								labelProcessor.set(Pos[0], Pos[1], 254);
-							}
-						}
-					}
-    						
-    			
-    			
-					//Clear the current region
-					currentRfpRegion.clear();
-					currentGfpRegion.clear(); 
-   
-					deleteUsedCoordinates(usedCoordinates,rankedRfpPixelsPosition,rankedGfpPixelsPosition);
-					usedCoordinates.clear();
-					//reset counter for next ROI, move it down a negative
-					//number for each new group so that each roi gets a
-					//separate number
-					counter = -1;
-				}
-
-				counter++;
-				if (rankedRfpPixelsPosition.size()<1) {
-					exitLoop=true;
-				}
-			}while(exitLoop==false);
-		}
 	
+		ClearResults();
 		
-    	OutputResults(foundRfpRegions, foundGfpRegions,x);
-    	
-    	//Label the Green Image
+		OutputResults(spotMeanG,spotModeG,spotMinG,spotMaxG,spotMedianG,spotMeanR,spotModeR,spotMinR,spotMaxR,spotMedianR,x);
+		
+		//Label the Green Image
     	ImageProcessor ip = labelImage.getProcessor();
 		Font font = new Font("SansSerif", Font.PLAIN, 18);
 		ip.setFont(font);
-		Color color = new Color(255, 255, 255);
-	//	ip.setColor(new Color(255, 255, 255));
-		ip.setColor(color);
+		ip.setColor(new Color(1, 1, 1));
     	String cellNumber = Integer.toString(x+1);
-    	ip.drawString(cellNumber, xPosition, yPosition);
+    	ip.drawString(cellNumber, xPos+6, yPos+6);
 		labelImage.updateAndDraw();
-   
+		
+
+		impGreen.changes=false;
+		impGreen.close();
+		impRed.changes=false;
+		impRed.close();
     }
     
+ 
+    public void getRegionValues(int xPos, int yPos ,int x) {
+   
+    		for (int a=xPos-3; a<xPos+3;a++) {
+    			for(int b=yPos-3; b<yPos+3;b++) {
+    				
+    			}
+    		}
+    	
+    	
+    	
+    }
+  
     
     public void deleteUsedCoordinates(List<Integer>usedCoordinates, ArrayList<double[]>rankedRfpPixelsPosition, ArrayList<double[]>rankedGfpPixelsPosition) {
     	ArrayList<double[]>deleteTheseCoordinates=new ArrayList<>();
@@ -541,111 +506,35 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
     	}   	
     }
     
-    
-    public void OutputResults(ArrayList<ArrayList<int[]>>foundRfpRegions, ArrayList<ArrayList<int[]>>foundGfpRegions, int x){
+    public void OutputResults(double spotMeanG,double spotModeG,double spotMinG, double spotMaxG, double spotMedianG, double spotMeanR, double spotModeR, double spotMinR, double spotMaxR, double spotMedianR, int x) {
     	String name = file.getAbsolutePath();
 		String newName = name.substring(0, name.indexOf("."));	
 		String CreateName = newName + ".txt";
 		String FILE_NAME = CreateName;
-    	
-    	
-    	for (int a=0;a<foundRfpRegions.size();a++) {
-    		
-    		ArrayList<int[]> roiRFPSpot = foundRfpRegions.get(a);
-    		ArrayList<int[]> roiGFPSpot = foundGfpRegions.get(a);
-    		double totalRFPIntensity = 0;
-    		double meanRFPIntensity = 0;
-    		double minRFPIntensity = 65000;
-    		double maxRFPIntensity = 0;
-    		double totalGFPIntensity = 0;
-    		double meanGFPIntensity = 0;
-    		double minGFPIntensity = 65000;
-    		double maxGFPIntensity = 0;
-    		double pixelArea = 0;
-    		
-			
-    		if ((roiRFPSpot.size()>=activeMinSpotSize) && (roiRFPSpot.size()<=activeMaxSpotSize)) {		
-    			for (int b=0; b<roiRFPSpot.size();b++) {
-    				 int[] RfpValues = roiRFPSpot.get(b);
-    				int[] GfpValues = roiGFPSpot.get(b);	
-    				int spotRfpValues = RfpValues [2];
-    				int spotGfpValues = GfpValues [2];
-    				
-    				totalRFPIntensity += spotRfpValues;
-    				totalGFPIntensity += spotGfpValues;
-    				
-    				if (spotGfpValues<minGFPIntensity) {
-    					minGFPIntensity = spotGfpValues;
-    				}
-    				if (spotGfpValues>maxGFPIntensity) {
-    					maxGFPIntensity = spotGfpValues;
-    				}
-    				if (spotRfpValues<minRFPIntensity) {
-    					minRFPIntensity = spotRfpValues;
-    				}
-    				if (spotRfpValues>maxRFPIntensity) {
-    					maxRFPIntensity = spotRfpValues;
-    				}
-    				
-    			}
-    			pixelArea = roiRFPSpot.size();
-    			meanGFPIntensity = totalGFPIntensity/roiRFPSpot.size();
-    			meanRFPIntensity = totalRFPIntensity/roiRFPSpot.size();
-    			
-    		
-    		}
-  		
-    		if ((roiRFPSpot.size()>activeMinSpotSize) && (roiRFPSpot.size()<activeMaxSpotSize)) {	
-    			
-    	
-    			try{
-    				FileWriter fileWriter = new FileWriter(FILE_NAME,true);
-    				BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-    		
-    				if(x==1) {
-    					bufferedWriter.newLine();
-    					bufferedWriter.write(" File= " + name);
-    					bufferedWriter.newLine();
-    				}			
-    				bufferedWriter.write("Cell " + x + " Area = " + pixelArea + " pixels " +" Total RFP Spot Intensity = " + totalRFPIntensity + " Total GFP Spot Intensity = " + totalGFPIntensity + " Mean RFP Spot Intensity = " + meanRFPIntensity + " Mean GFP Spot Intensity = " + meanGFPIntensity + " Min RFP Spot Intensity = " + minRFPIntensity + " Min GFP Spot Intensity = " + minGFPIntensity + " Max RFP Spot Intensity = " + maxRFPIntensity + " Max GFP Spot Intensity = " + maxGFPIntensity);		
-    				bufferedWriter.newLine();
-    				bufferedWriter.close();
-
-    			}
-    			catch(IOException ex) {
-    				System.out.println(
-                    "Error writing to file '"
-                    + FILE_NAME + "'");
-    			}
-    		
-    		}	
-    		
-    		
-    	}
-    	
-    	if(foundRfpRegions.size()==0) {
-    		try{
-				FileWriter fileWriter = new FileWriter(FILE_NAME,true);
-				BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
 		
-				if(x==0) {
-					bufferedWriter.newLine();
-					bufferedWriter.write(" File= " + name);
-					bufferedWriter.newLine();
-				}			
-				bufferedWriter.write("Cell " + x + " No Spots found");		
+		try{
+			FileWriter fileWriter = new FileWriter(FILE_NAME,true);
+			BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+	
+			if(x==0 && firstRun==true) {
 				bufferedWriter.newLine();
-				bufferedWriter.close();
+				bufferedWriter.write(" File= " + name);
+				bufferedWriter.newLine();
+				firstRun = false;
+			}			
+			bufferedWriter.write("Cell " + (x+1) + " Green Mean = " + spotMeanG + " Green Mode = "  + spotModeG + " Green Min = " + spotMinG + " Green Max = " + spotMaxG + " Green Median = " + spotMedianG + " Red Mean = " + spotMeanR + " Red Mode = " + spotModeR + " Red Min = " + spotMinR + " Red Max = " + spotMaxR + " Red Median = " + spotMedianR);		
+			bufferedWriter.newLine();
+			bufferedWriter.close();
 
-			}
-			catch(IOException ex) {
-				System.out.println(
-                "Error writing to file '"
-                + FILE_NAME + "'");
-			}
-    	}
+		}
+		catch(IOException ex) {
+			System.out.println(
+            "Error writing to file '"
+            + FILE_NAME + "'");
+		}
+		
     }
-    
+  
     public MouseListener mouseListener = new MouseListener() {
     	@Override
     	public void mousePressed(MouseEvent e) {}
@@ -663,6 +552,16 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
     	public void mouseEntered(MouseEvent e) {}
    
     };
+    
+    public void ClearResults(){
+		
+		ResultsTable emptyrt = new ResultsTable();	
+		emptyrt = Analyzer.getResultsTable();
+		int valnums = emptyrt.getCounter();
+		for(int a=0;a<valnums;a++){
+			IJ.deleteRows(0, a);
+		}
+	}
 
 
     /**

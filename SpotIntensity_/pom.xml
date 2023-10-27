@@ -35,11 +35,10 @@
 	</licenses>
 
 	<developers>
-		<!-- See https://imagej.net/Team -->
 		<developer>
 			<id>CoilEdinburgh</id>                                 
 			<name>David Kelly</name>                            
-			<url>https://www.ed.ac.uk/biology/wcb/centre-optical-instrumentation-laboratory-coil</url> <!-- FIXME: Your website here       -->
+			<url>https://www.ed.ac.uk/biology/wcb/centre-optical-instrumentation-laboratory-coil</url> 
 			<roles>
 				<role>founder</role>
 				<role>lead</role>
@@ -53,10 +52,11 @@
 	</developers>
 	<contributors>
 		<contributor>
-			<name></name>
+			<name>Toni McHugh</name>
+			<url>https://www.ed.ac.uk/biology/wcb/centre-optical-instrumentation-laboratory-coil</url> 
 			<roles>
+				<role>reviewer</role>
 			</roles>
-			
 		</contributor>
 	</contributors>
 
@@ -100,6 +100,7 @@
 		<dependency>
 			<groupId>net.imagej</groupId>
 			<artifactId>imagej</artifactId>
+			
 		</dependency>
 		<!-- User-facing commands -->
 		<dependency>
@@ -110,19 +111,31 @@
 		<dependency>
 			<groupId>net.imagej</groupId>
 			<artifactId>imagej-legacy</artifactId>
+			
 		</dependency>
 		<!-- Include all Fiji plugins when running -->
 		<dependency>
 			<groupId>sc.fiji</groupId>
 			<artifactId>fiji</artifactId>
+			
 		</dependency>
 		
 		<!-- https://mvnrepository.com/artifact/ome/bioformats_package -->
 		<dependency>
     		<groupId>ome</groupId>
     		<artifactId>bioformats_package</artifactId>
-    		<version>7.0.0</version>
+    	  	<version>7.0.0</version> 
     		<type>pom</type>
+    		<exclusions>
+					<exclusion>
+						<groupId>xalan</groupId>
+						<artifactId>serializer</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>xalan</groupId>
+						<artifactId>xalan</artifactId>
+					</exclusion>
+			</exclusions>		
 		</dependency>
 		
 		<!-- https://mvnrepository.com/artifact/ome/bio-formats_plugins 
@@ -144,6 +157,7 @@
 		<dependency>
   			<groupId>ome</groupId>
   			<artifactId>formats-gpl</artifactId>
+  			<version>${formats-gpl.version}</version><!--$NO-MVN-MAN-VER$-->
 		</dependency>
 		
 		<!-- https://mvnrepository.com/artifact/ch.epfl.biop/ijl-utilities-wrappers -->
@@ -154,4 +168,5 @@
 		</dependency>
 
 	</dependencies>
+	
 </project>
