@@ -19,7 +19,6 @@ import net.imglib2.FinalInterval;
 import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.histogram.Histogram1d;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.roi.IterableRegion;
@@ -217,6 +216,7 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
 		}
         
         MeasureSelectedRegions(roiNum,ChannelTwo,ChannelOne, ChannelThree, rm);
+        BkGrd(ChannelTwo, ChannelThree);
         IJ.run(labelImage, "Enhance Contrast", "saturated=0.35"); //Autoscale image
         String name = file.getAbsolutePath();
 		String newName = name.substring(0, name.indexOf("."));	
@@ -482,28 +482,37 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
     	
     }
   
-    
-    public void deleteUsedCoordinates(List<Integer>usedCoordinates, ArrayList<double[]>rankedRfpPixelsPosition, ArrayList<double[]>rankedGfpPixelsPosition) {
-    	ArrayList<double[]>deleteTheseCoordinates=new ArrayList<>();
-    	
-    	for(int a=0;a<usedCoordinates.size();a++) {
-    		double[] coordinatesToKill = rankedRfpPixelsPosition.get(usedCoordinates.get(a));
-    		deleteTheseCoordinates.add(coordinatesToKill);
-    	}
-    	
-    	for (int b=0;b<deleteTheseCoordinates.size();b++) {
-			int X = (int) deleteTheseCoordinates.get(b)[0];
-			int Y = (int) deleteTheseCoordinates.get(b)[1];
-			for(int c=0;c<rankedRfpPixelsPosition.size();c++) {
-				double[] pos = rankedRfpPixelsPosition.get(c);
-	    		int xPosition = (int)pos[0];
-	    		int yPosition = (int)pos[1];
-	    		if (X==xPosition && Y==yPosition) {
-	    			rankedRfpPixelsPosition.remove(c);
-	    			rankedGfpPixelsPosition.remove(c);
-	    		}
-			}
-    	}   	
+    public void BkGrd(RandomAccessibleInterval<T>ChannelTwo, RandomAccessibleInterval<T>ChannelThree){
+    	 ImagePlus greenImp = ImageJFunctions.wrap((RandomAccessibleInterval<T>) ChannelTwo,"Bkground Green Image");
+    	 ImagePlus redImp = ImageJFunctions.wrap((RandomAccessibleInterval<T>) ChannelThree,"Bkground Red Image");
+    	 ClearResults();
+    	 greenImp.show();
+    	 IJ.run(greenImp, "Enhance Contrast", "saturated=0.35");
+    	 new WaitForUserDialog("Green Background", "Draw region for background").show();
+    	 IJ.run(greenImp, "Measure", "");
+ 		 ResultsTable rtG = Analyzer.getResultsTable();
+ 		 double BkGrdMeanG = rtG.getValueAsDouble(1, 0);
+ 		 double BkGrdModeG = rtG.getValueAsDouble(3, 0);
+ 		 double BkGrdMinG = rtG.getValueAsDouble(4, 0);
+ 		 double BkGrdMaxG = rtG.getValueAsDouble(5, 0);
+ 		 double BkGrdMedianG = rtG.getValueAsDouble(21, 0);
+ 		 
+ 		 ClearResults();
+ 		 redImp.show();
+ 		 IJ.run(redImp, "Enhance Contrast", "saturated=0.35");
+ 		 new WaitForUserDialog("Red Background", "Draw region for background").show();
+ 		 IJ.run(redImp, "Measure", "");
+		 ResultsTable rtR = Analyzer.getResultsTable();
+		 double BkGrdMeanR = rtR.getValueAsDouble(1, 0);
+		 double BkGrdModeR = rtR.getValueAsDouble(3, 0);
+		 double BkGrdMinR = rtR.getValueAsDouble(4, 0);
+		 double BkGrdMaxR = rtR.getValueAsDouble(5, 0);
+		 double BkGrdMedianR = rtR.getValueAsDouble(21, 0);
+ 		 int x = -2;
+		 OutputResults(BkGrdMeanG,BkGrdModeG,BkGrdMinG,BkGrdMaxG,BkGrdMedianG,BkGrdMeanR,BkGrdModeR,BkGrdMinR,BkGrdMaxR,BkGrdMedianR,x);
+ 		 
+ 		 
+ 		
     }
     
     public void OutputResults(double spotMeanG,double spotModeG,double spotMinG, double spotMaxG, double spotMedianG, double spotMeanR, double spotModeR, double spotMinR, double spotMaxR, double spotMedianR, int x) {
