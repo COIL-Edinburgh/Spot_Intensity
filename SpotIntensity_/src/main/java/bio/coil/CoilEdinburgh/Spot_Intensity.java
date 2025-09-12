@@ -309,6 +309,7 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
     	for(int a=0;a<outlines.length;a++) {
     		Roi nucleus = outlines[a];
     		greenChannel.setRoi(nucleus);
+    		//CALCULATION THE STANDARD DEVIATION TO RECOGNISE A SPOT
 			minThresh = (nucleus.getStatistics().stdDev*10) + nucleus.getStatistics().mean;
     		MeasureAnyGreenAndRed(minThresh,greenChannel,redChannel,FarRedChannel,nucleus,a);
    
