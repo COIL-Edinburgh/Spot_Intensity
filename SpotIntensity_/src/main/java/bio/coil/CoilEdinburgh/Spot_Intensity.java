@@ -14,22 +14,11 @@ import net.imagej.display.ImageDisplayService;
 import net.imagej.display.WindowService;
 import net.imagej.ops.Op;
 import net.imagej.ops.OpService;
-import net.imglib2.Cursor;
 import net.imglib2.FinalInterval;
-import net.imglib2.IterableInterval;
-import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.roi.IterableRegion;
-import net.imglib2.roi.Masks;
-import net.imglib2.roi.RealMask;
-import net.imglib2.roi.Regions;
-import net.imglib2.type.logic.BoolType;
 import net.imglib2.type.numeric.RealType;
-import net.imglib2.view.IntervalView;
-import net.imglib2.view.RandomAccessibleOnRealRandomAccessible;
-import net.imglib2.view.Views;
 
 import org.scijava.command.Command;
 import org.scijava.convert.ConvertService;
@@ -41,19 +30,13 @@ import org.scijava.ui.UIService;
 import ij.IJ;
 
 import ij.ImagePlus;
-import ij.gui.OvalRoi;
+import ij.WindowManager;
 import ij.gui.Roi;
 import ij.gui.WaitForUserDialog;
 import ij.measure.ResultsTable;
 import ij.plugin.filter.Analyzer;
 import ij.plugin.frame.RoiManager;
-import ij.process.ImageProcessor;
-import ij.process.ImageStatistics;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -61,9 +44,6 @@ import java.io.IOException;
 
 import java.util.ArrayList;
 import java.util.List;
-
-
-import javax.swing.JOptionPane;
 
 /*
  * Plugin uses Cellpose to find and threshold dapi labelled nuclei, the user then
@@ -125,8 +105,6 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
     private ConvertService cs;
     
     int cellNum;
-  //  int x;
-  //  int y;
     ImagePlus labelImage;
     Boolean firstRun;
     
@@ -226,52 +204,16 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
         		ChannelFour = projectedImages.get(3);
         	}
         }
-     
-     //   firstRun =true;
-        labelImage = ImageJFunctions.wrap((RandomAccessibleInterval<T>) ChannelTwo,"Labelled Green Image");
-		labelImage.show();
-		IJ.run(labelImage, "Enhance Contrast", "saturated=0.35");
-		
+
 		RoiManager roiManager = null;
-	//	roiManager.deselect(null);
-	//	roiManager.reset();
-        RandomAccessibleInterval<T> nucMask = FindNuclei(ChannelOne);
+		FindNuclei(ChannelOne);
+		
         roiManager=RoiManager.getRoiManager();
         Roi[] outlines = roiManager.getRoisAsArray();
-     //rm = getRois(nucMask);
-        
-/*        ArrayList<Integer> roiNum = new ArrayList<Integer>();
-        try {
-			roiNum = selectRoi(ChannelOne,ChannelTwo,ChannelThree,ChannelFour);
-		} catch (InterruptedException e) {
-			
-			e.printStackTrace();
-		}
-  */      
-  //      MeasureSelectedRegions(roiNum,ChannelTwo,ChannelOne, ChannelThree, ChannelFour, rm);
-        MeasureROIRegions(ChannelTwo,ChannelOne, ChannelThree, ChannelFour, outlines);
-        ArrayList<Double> BkGrdValuesGreen = new ArrayList<Double>();
-        ArrayList<Double> BkGrdValuesRed = new ArrayList<Double>();
-        ArrayList<Double> BkGrdValuesFarRed = new ArrayList<Double>();
-        
-        if(ChannelTwo!=null) {
-        	BkGrdValuesGreen = BkGrd(ChannelTwo);
-        }
-        if(ChannelThree!=null) {
-       	 	BkGrdValuesRed = BkGrd(ChannelThree);
-       }
-       if(ChannelFour!=null) {
-       	 	BkGrdValuesFarRed = BkGrd(ChannelFour);
-       }
-       String measurementType = "BkGrd";
-      
-       OutputResults(BkGrdValuesGreen,BkGrdValuesRed,BkGrdValuesFarRed, measurementType);
-       
-        IJ.run(labelImage, "Enhance Contrast", "saturated=0.35"); //Autoscale image
-        String name = file.getAbsolutePath();
-		String newName = name.substring(0, name.indexOf("."));	
-		String imageName = newName + ".jpg";
-        IJ.saveAs(labelImage, "Jpeg", imageName);
+  
+        MeasureROIRegions(ChannelTwo,ChannelOne, ChannelThree, ChannelFour, outlines);  
+
+        IJ.run("Close All", "");
         new WaitForUserDialog("Finished", "Plugin Finished").show();
     }
     
@@ -326,131 +268,41 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
     	
     }
     
-    @SuppressWarnings("unchecked")
-	public RandomAccessibleInterval<T> FindNuclei(RandomAccessibleInterval<T>ChannelOne){
-		
-    	RandomAccessibleInterval<T> nucMask = null;
+    public void  FindNuclei(RandomAccessibleInterval<T>ChannelOne){
+    			
     	//Use Cellpose to separate and select the nuclei
     	uiService.show(ChannelOne);
     	ImagePlus imp = ImageJFunctions.wrap(ChannelOne,"Title");
     	imp.show();
     	Cellpose_Wrapper cpw = new Cellpose_Wrapper(modelpath.getPath(), envpath.getPath(), size, imp);
         cpw.run(true);
-        
-    //	 IJ.run("Cellpose Advanced", "diameter=" + 80 + " cellproba_threshold=" + 0.0 + " flow_threshold=" + 0.4
-     //           + " anisotropy=" + 1.0 + " diam_threshold=" + 12.0 + " model=" + "nuclei" + " nuclei_channel=" + 0
-      //          + " cyto_channel=" + 1 + " dimensionmode=" + "2D" + " stitch_threshold=" + -1 + " omni=" + false
-       //         + " cluster=" + false + " additional_flags=" + "");
-    	
-    	Dataset image = ij.imageDisplay().getActiveDataset();
-    	nucMask = (RandomAccessibleInterval<T>) image;
-    	return nucMask;
+        ImagePlus showImp = WindowManager.getCurrentImage();
+        ImagePlus squashedImp = showImp.flatten();
+        String name = file.getAbsolutePath();
+		String newName = name.substring(0, name.indexOf("."));	
+		String imageName = newName + ".jpg";
+        IJ.saveAs(squashedImp, "Jpeg", imageName);
     	
     }
-    
-    private RoiManager getRois(RandomAccessibleInterval<T> nucMask) {
-    	RoiManager rm;
-    	ImagePlus mask = ImageJFunctions.wrap(nucMask,""); 
-    	ImageStatistics stats = mask.getStatistics();
-    	
-    	for (int i = 1; i < stats.max + 1; i++) {
-            //Set the threshold for the cell and use analyse particles to add to ROI manager
-            IJ.setThreshold(mask, i, i);
-            IJ.run(mask, "Analyze Particles...", "add");
-        }
-    	rm = RoiManager.getInstance();
-    	mask.changes=false;
-    	mask.close();
-    	return rm;
-    }
-    
-  /*  private ArrayList<Integer> selectRoi(RandomAccessibleInterval<T>ChannelOne, RandomAccessibleInterval<T>ChannelTwo, RandomAccessibleInterval<T>ChannelThree, RandomAccessibleInterval<T>ChannelFour) throws InterruptedException {
-    	
-    	
-    	ImagePlus impTwo = null;
-    	ImagePlus impThree = null;
-    	ImagePlus impFour =null;
-    	RoiManager roiManager = new RoiManager();
-    	roiManager = RoiManager.getInstance();
-        Roi[] outlines = roiManager.getRoisAsArray();
-        ArrayList<Integer> roiNum = new ArrayList<Integer>();
-        ImagePlus imp = ImageJFunctions.wrap(ChannelOne,"");
-        imp.show();
-        IJ.run(imp, "Enhance Contrast", "saturated=0.35");  
-        IJ.run("Out [-]", "");
-        if (ChannelTwo!=null) {
-        	impTwo = ImageJFunctions.wrap(ChannelTwo,"");
-        	impTwo.show();
-        	IJ.run(impTwo, "Enhance Contrast", "saturated=0.35"); 
-        	IJ.run("Out [-]", "");
-        }
-        if (ChannelThree!=null) {
-        	impThree = ImageJFunctions.wrap(ChannelThree,"");
-        	impThree.show();
-        	IJ.run(impThree, "Enhance Contrast", "saturated=0.35"); 
-        	IJ.run("Out [-]", "");
-        }
-        if (ChannelFour!=null) {
-        	impFour = ImageJFunctions.wrap(ChannelThree,"");
-        	impFour.show();
-        	IJ.run(impFour, "Enhance Contrast", "saturated=0.35"); 
-        	IJ.run("Out [-]", "");
-        }
-        new WaitForUserDialog("Arrange Images", "Place the images so that you can see all channels").show();
-        
-        String answer = "y";
-        do {
-        	imp.getCanvas().addMouseListener(mouseListener);
-            double scale = imp.getCanvas().getMagnification();
-        	new WaitForUserDialog("Click", "Click an object (ONLY CLICK OBJECT IMAGE) then OK").show();
-        	x= (int) (x/scale);
-    		y= (int) (y/scale);
-    		int count=1;
-    		for (Roi roi : outlines) {
-    			if (roi.contains(x, y)) {
-    				roiNum.add(count);
-    				imp.getCanvas().removeMouseListener(mouseListener);
-    				break;
-    			}
-    			count++;
-    		}
-    		imp.getCanvas().removeMouseListener(mouseListener);
-    		answer = JOptionPane.showInputDialog("Do you want to select another nuclei y/n ");
-        }while(answer.equals("y")); 
-		imp.changes=false;
-		imp.close();
-		impTwo.changes=false;
-		impTwo.close();
-		impThree.changes=false;
-		impThree.close();
-		if (impFour!=null) {
-			impFour.changes=false;
-			impFour.close();
-		}
- 		return roiNum;
-        
-    }
-    */
-    @SuppressWarnings("unchecked")
-//	private void  MeasureSelectedRegions(ArrayList<Integer>roiNum, RandomAccessibleInterval<T> ChannelTwo, RandomAccessibleInterval<T> ChannelOne, RandomAccessibleInterval<T>ChannelThree, RandomAccessibleInterval<T> ChannelFour, RoiManager rm) {
-    	
+
     private void  MeasureROIRegions(RandomAccessibleInterval<T> ChannelTwo, RandomAccessibleInterval<T> ChannelOne, RandomAccessibleInterval<T>ChannelThree, RandomAccessibleInterval<T> ChannelFour, Roi[] outlines) {
     	
+    	int greenChannelID=0;
+		int redChannelID=0;
+		
     	ImagePlus greenChannel = ImageJFunctions.wrap(ChannelTwo,"Green");
 		greenChannel.show();
+		greenChannelID = greenChannel.getID();
 		IJ.run(greenChannel, "Enhance Contrast", "saturated=0.35");
 		ImagePlus redChannel = null;
 		ImagePlus FarRedChannel = null;
 		
+		
 		if(ChannelThree!=null) {
 			redChannel = ImageJFunctions.wrap(ChannelThree,"Red");
 			redChannel.show();
+			redChannelID=redChannel.getID();
 			IJ.run(redChannel, "Enhance Contrast", "saturated=0.35");
-		}
-		if(ChannelFour!=null) {
-			FarRedChannel = ImageJFunctions.wrap(ChannelFour,"FarRed");
-			FarRedChannel.show();
-			IJ.run(FarRedChannel, "Enhance Contrast", "saturated=0.35");
 		}
 		
 		double minThresh = 0.0;
@@ -458,228 +310,188 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
     		Roi nucleus = outlines[a];
     		greenChannel.setRoi(nucleus);
 			minThresh = (nucleus.getStatistics().stdDev*10) + nucleus.getStatistics().mean;
-    		MeasureAnyGreenAndRed(minThresh,greenChannel,redChannel,FarRedChannel);
-    	}
-    	
-    	//  RealMask mask = null;
-    	
-    /*	
-    	//Loop through all the split regions of interest found from the GFP channel
-    	for (int x=0;x<roiNum.size();x++) {
-    		
-    		IterableInterval<T> theGreenChannel = (IterableInterval<T>) ChannelTwo;
-           	Roi roi = rm.getRoi(roiNum.get(x)-1);
-        	rm.select(roiNum.get(x)-1);
-        	mask = cs.convert(roi, RealMask.class);
- 
-        	// Convert ROI from R^n to Z^n.
-        	RandomAccessibleOnRealRandomAccessible<BoolType> discreteROI = Views.raster(Masks.toRealRandomAccessible(mask));
-        	// Apply finite bounds to the discrete ROI.
-
-      
-        	IntervalView<BoolType> boundedDiscreteROIGreen = Views.interval(discreteROI, theGreenChannel);
-        	// Create an iterable version of the finite discrete ROI.
-        	IterableRegion<BoolType> iterableROIGreen = Regions.iterable(boundedDiscreteROIGreen);
-        	
-        
-        	IterableInterval<T> thegfpResultingPixels = Regions.sample(iterableROIGreen, (RandomAccessible<T>) theGreenChannel);  //Pixels from green channel
-    		cellNum = x;
-        	CheckForSpots(thegfpResultingPixels, ChannelTwo, ChannelThree, ChannelFour, cellNum);
-        	
-    	}
-    	*/
-    }
-    
-    private void MeasureAnyGreenAndRed(double minThresh, ImagePlus greenChannel, ImagePlus redChannel, ImagePlus FarRedChannel) {
-    	
-    }
-    
-    private void CheckForSpots(IterableInterval<T> thegfpResultingPixels, RandomAccessibleInterval<T> ChannelTwo, RandomAccessibleInterval<T> ChannelThree, RandomAccessibleInterval<T> ChannelFour, int cellNum) {
-    	
+    		MeasureAnyGreenAndRed(minThresh,greenChannel,redChannel,FarRedChannel,nucleus,a);
    
-    	double highestValue=0;
-    
-    	//Assign cursor to iterate through the pixels within ROI
-		Cursor<T> cursorGFP = thegfpResultingPixels.localizingCursor();
-	
-		cursorGFP.fwd();
-		double [] Positions = new double[2];
-		//Find Brightest Pixel
-		for (int y=0;y<thegfpResultingPixels.size();y++) {
-	
-			cursorGFP.fwd();
-		
-			if(cursorGFP.get().getRealDouble()>highestValue) {
-				highestValue = cursorGFP.get().getRealDouble();
-				if (Positions.length>1) {
-					Positions = new double[2];
-				}
-				Positions = cursorGFP.positionAsDoubleArray(); //Read xy coordinates of pixel
-			}
-		}
-		
-		//Get position of Spot so that image can be labelled for later
-		int xPos = (int) Positions[0]-(activeMaxSpotSize/3);
-		int yPos = (int) Positions[1]-(activeMaxSpotSize/3);
-		
-		ArrayList<Double>valuesG = new ArrayList<Double>();
-		ArrayList<Double>valuesR = new ArrayList<Double>();
-		ArrayList<Double>valuesFR = new ArrayList<Double>();
-		
-		if (ChannelTwo!=null) {
-			valuesG = measureSpots(ChannelTwo, Positions);
-		}
-		if (ChannelThree!=null) {
-			valuesR = measureSpots(ChannelThree, Positions);
-		}
-		if (ChannelFour!=null) {
-			valuesFR = measureSpots(ChannelFour, Positions);
-		}
-
-		String measurementType = "test";
-	
-		OutputResults(valuesG,valuesR,valuesFR,measurementType);
-		
-		
-		//Label the Green Image
-    	ImageProcessor ip = labelImage.getProcessor();
-		Font font = new Font("SansSerif", Font.PLAIN, 18);
-		ip.setFont(font);
-		ip.setColor(Color.getHSBColor(0, 0, 255));
-    	String cellNumber = Integer.toString(cellNum+1);
-    	ip.drawString(cellNumber, xPos+12, yPos+12);
+    	}
     	
-		labelImage.updateAndDraw();
-		labelImage.setRoi(new OvalRoi(xPos, yPos,activeMaxSpotSize,activeMaxSpotSize));
-		IJ.run(labelImage, "Draw", "slice");
-		IJ.run(labelImage, "Select None", "");
-		
-		
-    }
-    
- 
-    public ArrayList<Double> measureSpots(RandomAccessibleInterval<T> Channel, double [] Positions) {
-		ArrayList<Double> spotValues = new ArrayList<Double>();
+    	 double [] BkGrdValuesGreen = new double [4];
+    	 double [] BkGrdValuesRed = new double [4];
     	
-		ClearResults();
-		ImagePlus imp = ImageJFunctions.wrap(Channel,"TestChannel");
-		imp.show();
-		IJ.run(imp, "Enhance Contrast", "saturated=0.35");
-		int xPos = (int) Positions[0]-(activeMaxSpotSize/3);
-		int yPos = (int) Positions[1]-(activeMaxSpotSize/3);
-		imp.setRoi(new OvalRoi(xPos, yPos,activeMaxSpotSize,activeMaxSpotSize));
-		IJ.run("Set Measurements...", "area mean standard modal min centroid median redirect=None decimal=2");
-		IJ.run(imp, "Measure", "");
-		ResultsTable rt = new ResultsTable();	
-		rt = Analyzer.getResultsTable();
-		spotValues.add(rt.getValueAsDouble(1, 0));
-		spotValues.add(rt.getValueAsDouble(3, 0));
-		spotValues.add(rt.getValueAsDouble(4, 0));
-		spotValues.add(rt.getValueAsDouble(5, 0));
-		spotValues.add(rt.getValueAsDouble(21, 0));
-		
-		ClearResults();
-		
-		imp.changes=false;
-		imp.close();
-		
-    	return spotValues;
-    }
-  
-    public ArrayList<Double> BkGrd(RandomAccessibleInterval<T>Channel){
-    	ArrayList<Double> BkGrdValues = new ArrayList<Double>();
-    	ImagePlus BkGrdImp = ImageJFunctions.wrap((RandomAccessibleInterval<T>) Channel,"Bkground Image");
-    	ClearResults();
-    	BkGrdImp.show();
-    	IJ.run(BkGrdImp, "Enhance Contrast", "saturated=0.35");
-    	 new WaitForUserDialog("Background", "Draw region for background").show();
-    	 IJ.run(BkGrdImp, "Measure", "");
- 		 ResultsTable rtG = Analyzer.getResultsTable();
- 		 BkGrdValues.add(rtG.getValueAsDouble(1, 0)); // Mean Background
- 		 BkGrdValues.add(rtG.getValueAsDouble(3, 0)); // Mode Background
- 		 BkGrdValues.add(rtG.getValueAsDouble(4, 0)); // Min Background
- 		 BkGrdValues.add(rtG.getValueAsDouble(5, 0)); // Max Background
- 		 BkGrdValues.add(rtG.getValueAsDouble(21, 0)); // Median Background
- 		 
- 		ClearResults();
- 		BkGrdImp.changes=false;
- 		BkGrdImp.close();
- 	
- 		return BkGrdValues;	 
- 		
+    	    
+    	if(ChannelTwo!=null) {
+    		IJ.selectWindow(greenChannelID);
+    		BkGrdValuesGreen = BkGrd(greenChannel);
+        }
+    
+        if(ChannelThree!=null) {
+        	IJ.selectWindow(redChannelID);
+        	BkGrdValuesRed = BkGrd(redChannel);
+       }
+    
+       
+       double[][] theBkGrdResults = new double[4][4];
+       
+       theBkGrdResults[0]=BkGrdValuesGreen;
+       
+       theBkGrdResults[1]=BkGrdValuesRed;
+       
+       int a=-1;
+   	   OutputResults(theBkGrdResults,a);
+    	
     }
     
-    public void OutputResults(ArrayList<Double>ValG, ArrayList<Double>ValR, ArrayList<Double>ValFR,String measurementType) {
-        
+    private void MeasureAnyGreenAndRed(double minThresh, ImagePlus greenChannel, ImagePlus redChannel, ImagePlus FarRedChannel,Roi nucleus, int a) {
+    	int greenChannelID = greenChannel.getID();
+    	
+    	int upperThreshold = greenChannel.getBitDepth();
+    	double maxThresh = 0;
+    	if(upperThreshold == 12) {
+    		maxThresh = 4095;
+    	}else {
+    		maxThresh = 65535;
+    	}
+    	
+    	IJ.selectWindow(greenChannelID);
+    	greenChannel.setRoi(nucleus);
+    	RoiManager roiManager;
+    	if (nucleus.getStatistics().max >= minThresh) {
+    		IJ.setThreshold(minThresh, maxThresh);
+    		IJ.run(greenChannel, "Analyze Particles...", "size=4-Infinity display clear add");
+    		roiManager=RoiManager.getRoiManager();
+            Roi[] smallOutlines = roiManager.getRoisAsArray();
+            IJ.run(greenChannel, "Select None", "");
+            double[][] theResults = GetResults(nucleus, smallOutlines, greenChannel, redChannel);     
+            OutputResults(theResults,a);
+    	}
+    	 
+    }
+    
+    private double[][] GetResults(Roi nucleus, Roi[] smallOutlines, ImagePlus greenChannel, ImagePlus redChannel) {
+    	int redChannelID = redChannel.getID();
+    	int greenChannelID = greenChannel.getID();
+    	double [][] theResults = new double[4][4];
+    	
+    	//Get Green Channel Results for the whole cell
+    	IJ.selectWindow(greenChannelID);
+    	double [] theGreenCellResults = new double[4];
+    	double [] theGreenDotResults = new double[4];
+    	greenChannel.setRoi(nucleus);
+    	theGreenCellResults[0] = nucleus.getStatistics().area;
+    	theGreenCellResults[1] = greenChannel.getProcessor().getStatistics().min;
+    	theGreenCellResults[2] = greenChannel.getProcessor().getStatistics().max;
+    	theGreenCellResults[3] = greenChannel.getProcessor().getStatistics().mean;
+    	IJ.run(greenChannel, "Select None", "");
+    	//Get Results for largest of the green dots
+    	double largestArea = 0;
+    	for(int x=0; x<smallOutlines.length;x++) {
+    		Roi small = smallOutlines[x];
+    		greenChannel.setRoi(small);
+    		if(small.getStatistics().area > largestArea) {
+    			theGreenDotResults[0]= small.getStatistics().area;
+    			theGreenDotResults[1]= greenChannel.getProcessor().getStatistics().min;
+    			theGreenDotResults[2]= greenChannel.getProcessor().getStatistics().max;
+    			theGreenDotResults[3]= greenChannel.getProcessor().getStatistics().mean;
+    			largestArea = small.getStatistics().area;
+    			
+    		}
+    	}
+    	IJ.run(greenChannel, "Select None", "");
+    	
+    	//Get Red Channel Results for the whole cell
+    	IJ.selectWindow(redChannelID);
+    	double [] theRedCellResults = new double[4];
+    	double [] theRedDotResults = new double[4];
+    	redChannel.setRoi(nucleus);
+    	
+    	theRedCellResults[0] = nucleus.getStatistics().area;
+    	theRedCellResults[1] = redChannel.getProcessor().getStatistics().min;
+    	theRedCellResults[2] = redChannel.getProcessor().getStatistics().max;
+    	theRedCellResults[3] = redChannel.getProcessor().getStatistics().mean;
+    	
+    	//Get Results for largest of the red dots
+    	largestArea = 0;
+    	for(int x=0; x<smallOutlines.length;x++) {
+    		Roi smallRed = smallOutlines[x];
+    		
+    		if(smallRed.getStatistics().area > largestArea) {
+    			redChannel.setRoi(smallRed);
+    			theRedDotResults[0]= smallRed.getStatistics().area;
+    			theRedDotResults[1]= redChannel.getProcessor().getStatistics().min;
+    			theRedDotResults[2]= redChannel.getProcessor().getStatistics().max;
+    			theRedDotResults[3]= redChannel.getProcessor().getStatistics().mean;
+    			largestArea = smallRed.getStatistics().area;
+    		}
+    	}
+    	
+    	theResults[0] = theGreenCellResults;
+    	theResults[1] = theGreenDotResults;
+    	theResults[2] = theRedCellResults;
+    	theResults[3] = theRedDotResults;
+    	return theResults;
+    }
+    
+    public void OutputResults(double [][] theResults, int a) {
     	String name = file.getAbsolutePath();
 		String newName = name.substring(0, name.indexOf("."));	
 		String CreateName = newName + ".txt";
 		String FILE_NAME = CreateName;
 		
+		if(a>0) {
 		try{
 			FileWriter fileWriter = new FileWriter(FILE_NAME,true);
 			BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-	
-			if(cellNum==0 && firstRun==true) {
-				bufferedWriter.newLine();
-				bufferedWriter.write(" File= " + name);
-				bufferedWriter.newLine();
-				firstRun = false;
-			}		
-			if(ValG.size()>0 && measurementType.equals("test")) {
-				bufferedWriter.write("Cell " + (cellNum+1) + " Green Mean = " + ValG.get(0) + " Green Mode = "  + ValG.get(1) + " Green Min = " + ValG.get(2) + " Green Max = " + ValG.get(3) + " Green Median = " + ValG.get(4));		
-				bufferedWriter.newLine();
+			bufferedWriter.newLine();
+			bufferedWriter.write(" File= " + name + "," + " Cell Number " + "," + (a+1) + "," +" Green Whole Cell Area " + "," + theResults[0][0] + "," + " Green Whole Cell Minimum " + "," + theResults[0][1] + "," + " Green Whole Cell Maximum " + "," + theResults[0][2] + "," + " Green Whole Cell Mean " + "," + theResults[0][3]);
+			bufferedWriter.newLine();
+			bufferedWriter.write(" File= " + name + "," + " Cell Number " + "," + (a+1) + "," +" Green ROI Area " + "," + theResults[1][0] + "," + " Green ROI Minimum " + "," + theResults[1][1] + "," + " Green ROI Maximum " + "," + theResults[1][2] + "," + " Green ROI Mean " + "," + theResults[1][3]);
+			bufferedWriter.newLine();
+			bufferedWriter.write(" File= " + name + "," + " Cell Number " + "," + (a+1) + "," +" Red Whole Cell Area " + "," + theResults[2][0] + "," + " Red Whole Cell Minimum " + "," + theResults[2][1] + "," + " Red Whole Cell Maximum " + "," + theResults[2][2] + "," + " Red Whole Cell Mean " + "," + theResults[2][3]);	
+			bufferedWriter.newLine();
+			bufferedWriter.write(" File= " + name + "," + " Cell Number " + "," + (a+1) + "," +" Red ROI Area " + "," + theResults[3][0] + "," + " Red ROI Minimum " + "," + theResults[3][1] + "," + " Red ROI Maximum " + "," + theResults[3][2] + "," + " Red ROI Mean " + "," + theResults[3][3]);
+			
+			bufferedWriter.close();
+		}
+			catch(IOException ex) {
+				System.out.println(
+	            "Error writing to file '"
+	            + FILE_NAME + "'");
 			}
-			if(ValR.size()>0 && measurementType.equals("test")) {
-				bufferedWriter.write("Cell " + (cellNum+1) + " Red Mean = " + ValR.get(0) + " Red Mode = " + ValR.get(1) + " Red Min = " + ValR.get(2) + " Red Max = " + ValR.get(3) + " Red Median = " + ValR.get(4));		
+		}else {
+			FileWriter fileWriter;
+			try {
+				fileWriter = new FileWriter(FILE_NAME,true);
+				BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
 				bufferedWriter.newLine();
-			}
-			if(ValFR.size()>0 && measurementType.equals("test")) {
-				bufferedWriter.write("Cell " + (cellNum+1) + " FarRed Mean = " + ValFR.get(0) + " FarRed Mode = " + ValFR.get(1) + " FarRed Min = " + ValFR.get(2) + " FarRed Max = " + ValFR.get(3) + " FarRed Median = " + ValFR.get(4));		
+				bufferedWriter.write(" File= " + name + "," + "," +" Green Bkgrd Area ROI" + "," + theResults[0][0] + "," + " Green BkGrd Minimum " + "," + theResults[0][1] + "," + " Green BkGrd Maximum " + "," + theResults[0][2] + "," + " Green BkGrd Mean " + "," + theResults[0][3]);
 				bufferedWriter.newLine();
+				bufferedWriter.write(" File= " + name + "," + "," +" Red Bkgrd Area ROI" + "," + theResults[1][0] + "," + " Red BkGrd Minimum " + "," + theResults[1][1] + "," + " Red BkGrd Maximum " + "," + theResults[1][2] + "," + " Red BkGrd Mean " + "," + theResults[1][3]);
+				bufferedWriter.newLine();
+				
+				bufferedWriter.close();
+			} catch (IOException e) {	
+				e.printStackTrace();
 			}
 			
-			if(ValG.size()>0 && measurementType.equals("BkGrd")) {
-				bufferedWriter.write("BkGrd Green Mean = " + ValG.get(0) + " BkGrd Green Mode = "  + ValG.get(1) + " BkGrd Green Min = " + ValG.get(2) + " BkGrd Green Max = " + ValG.get(3) + " BkGrd Green Median = " + ValG.get(4));		
-				bufferedWriter.newLine();
-			}
-			if(ValR.size()>0 && measurementType.equals("BkGrd")) {
-				bufferedWriter.write("BkGrd Red Mean = " + ValR.get(0) + " BkGrd Red Mode = " + ValR.get(1) + " BkGrd Red Min = " + ValR.get(2) + " BkGrd Red Max = " + ValR.get(3) + " BkGrd Red Median = " + ValR.get(4));		
-				bufferedWriter.newLine();
-			}
-			if(ValFR.size()>0 && measurementType.equals("BkGrd")) {
-				bufferedWriter.write("BkGrd FarRed Mean = " + ValFR.get(0) + " BkGrd FarRed Mode = " + ValFR.get(1) + " BkGrd FarRed Min = " + ValFR.get(2) + " BkGrd FarRed Max = " + ValFR.get(3) + " BkGrd FarRed Median = " + ValFR.get(4));		
-				bufferedWriter.newLine();
-			}
-			bufferedWriter.close();
-
-		}
-		catch(IOException ex) {
-			System.out.println(
-            "Error writing to file '"
-            + FILE_NAME + "'");
 		}
 		
+		
+		
     }
-  
- /*   public MouseListener mouseListener = new MouseListener() {
-    	@Override
-    	public void mousePressed(MouseEvent e) {}
-    	@Override
-    	public void mouseReleased(MouseEvent e) {}
-    	@Override
-    	public void mouseExited(MouseEvent e) {}
-    	@Override
-    	public void mouseClicked(MouseEvent e) {
-    		 x = e.getX();
-    		 y = e.getY();
-    		return;
-    	}
-    	@Override
-    	public void mouseEntered(MouseEvent e) {}
-   
-    };
-   */ 
+ 
+    private double[] BkGrd(ImagePlus BkGrdImp){
+    	double [] BkGrdValues = new double[4];
+ 
+    	 new WaitForUserDialog("Background", "Draw region for background").show();
+ 
+    	 BkGrdValues[0]= BkGrdImp.getStatistics().area;
+    	 BkGrdValues[1]= BkGrdImp.getProcessor().getStatistics().min;
+    	 BkGrdValues[2]= BkGrdImp.getProcessor().getStatistics().max;
+    	 BkGrdValues[3]= BkGrdImp.getProcessor().getStatistics().mean;
+ 	
+ 		return BkGrdValues;	 
+ 		
+    }
+    
     public void ClearResults(){
 		
 		ResultsTable emptyrt = new ResultsTable();	
