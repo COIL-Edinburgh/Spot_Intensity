@@ -4,6 +4,7 @@
  *
  * See the CC0 1.0 Universal license for details:
  *     http://creativecommons.org/publicdomain/zero/1.0/
+ *     
  */
 
 package bio.coil.CoilEdinburgh;
