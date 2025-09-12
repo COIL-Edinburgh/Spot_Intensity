@@ -493,16 +493,6 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
  		return BkGrdValues;	 
  		
     }
-    
-    public void ClearResults(){
-		
-		ResultsTable emptyrt = new ResultsTable();	
-		emptyrt = Analyzer.getResultsTable();
-		int valnums = emptyrt.getCounter();
-		for(int a=0;a<valnums;a++){
-			IJ.deleteRows(0, a);
-		}
-	}
 
 
     /**
