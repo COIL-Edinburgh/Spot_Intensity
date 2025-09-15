@@ -34,8 +34,6 @@ import ij.ImagePlus;
 import ij.WindowManager;
 import ij.gui.Roi;
 import ij.gui.WaitForUserDialog;
-import ij.measure.ResultsTable;
-import ij.plugin.filter.Analyzer;
 import ij.plugin.frame.RoiManager;
 
 import java.io.BufferedWriter;
@@ -141,6 +139,8 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
         RandomAccessibleInterval<T> ChannelFour = null;
         
         /*
+         * ASSIGN CHANNELS
+         * 
          * ChannelOne always blue
          * ChannelTwo always green
          * ChannelThree always red
@@ -207,12 +207,12 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
         }
 
 		RoiManager roiManager = null;
-		FindNuclei(ChannelOne);
+		FindNuclei(ChannelOne);			//Identify the nuclei
 		
         roiManager=RoiManager.getRoiManager();
-        Roi[] outlines = roiManager.getRoisAsArray();
+        Roi[] outlines = roiManager.getRoisAsArray();  //Assign the identified nuclei to an ROI array
   
-        MeasureROIRegions(ChannelTwo,ChannelOne, ChannelThree, ChannelFour, outlines);  
+        MeasureROIRegions(ChannelTwo,ChannelOne, ChannelThree, ChannelFour, outlines);  //Measure the channels using the ROI array
 
         IJ.run("Close All", "");
         new WaitForUserDialog("Finished", "Plugin Finished").show();
@@ -237,6 +237,9 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
     	return theChannels;
     }
     
+    /*
+     * Max project all the channels
+     */
     @SuppressWarnings({ "unchecked", "rawtypes" })
 	public List MaxProject(List<RandomAccessibleInterval<T>> theChannels) {
 		
@@ -261,14 +264,16 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
     		ij.op().run("project", projected, tempImage, statsOp, projectDim);	
     	
     		projectedImages.add(projected);
-    	
-    	}
-    	
-    	
+    	}	
     	return projectedImages;
     	
     }
     
+    /*
+     * Find all the nuclei using Cellpose
+     * Make sure Cellpose is installed and working on the 
+     * computer with the plugin installed
+     */
     public void  FindNuclei(RandomAccessibleInterval<T>ChannelOne){
     			
     	//Use Cellpose to separate and select the nuclei
@@ -291,13 +296,13 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
     	int greenChannelID=0;
 		int redChannelID=0;
 		
+		// Convert channels to ImagePlus
     	ImagePlus greenChannel = ImageJFunctions.wrap(ChannelTwo,"Green");
 		greenChannel.show();
 		greenChannelID = greenChannel.getID();
 		IJ.run(greenChannel, "Enhance Contrast", "saturated=0.35");
 		ImagePlus redChannel = null;
 		ImagePlus FarRedChannel = null;
-		
 		
 		if(ChannelThree!=null) {
 			redChannel = ImageJFunctions.wrap(ChannelThree,"Red");
@@ -306,6 +311,11 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
 			IJ.run(redChannel, "Enhance Contrast", "saturated=0.35");
 		}
 		
+		/*
+		 * Apply each ROI from the ROI array to the green channel
+		 * and find bright spots. To qualify as a spot it must be
+		 * 10 StDev values higher than the mean 
+		 */
 		double minThresh = 0.0;
     	for(int a=0;a<outlines.length;a++) {
     		Roi nucleus = outlines[a];
@@ -319,12 +329,12 @@ public class Spot_Intensity<T extends RealType<T>> implements Command {
     	 double [] BkGrdValuesGreen = new double [4];
     	 double [] BkGrdValuesRed = new double [4];
     	
-    	    
+    	//Find Green Background    
     	if(ChannelTwo!=null) {
     		IJ.selectWindow(greenChannelID);
     		BkGrdValuesGreen = BkGrd(greenChannel);
         }
-    
+    	//Find Red Background
         if(ChannelThree!=null) {
         	IJ.selectWindow(redChannelID);
         	BkGrdValuesRed = BkGrd(redChannel);
