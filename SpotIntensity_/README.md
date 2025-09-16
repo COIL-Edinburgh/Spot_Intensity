@@ -1,67 +1,37 @@
-This is an example Maven project implementing an ImageJ2 command.
+FIJI plugin to identify all the cells in a field by their nuclei then apply the ROI from the nuclei to 2 other colour channels. The 
+intensity in the green channel is measured and the brightest spot in the cell located. If the spot is 10 StDev higher than the cell mean
+intensity its measured and the same spot region is applied to the red channel. Background measurements are taken at the end of the 
+analysis via a user defined region in both the green and red channels.
 
-For an example Maven project implementing an **original ImageJ plugin**, see:
-    https://github.com/imagej/example-legacy-plugin
 
-It is intended as an ideal starting point to develop new ImageJ2 commands
-in an IDE of your choice. You can even collaborate with developers using a
-different IDE than you.
-
-* In [Eclipse](http://eclipse.org), for example, it is as simple as
-  _File &#8250; Import... &#8250; Existing Maven Project_.
-
-* In [NetBeans](http://netbeans.org), it is even simpler:
-  _File &#8250; Open Project_.
-
-* The same works in [IntelliJ](http://jetbrains.net).
-
-* If [jEdit](http://jedit.org) is your preferred IDE, you will need the
-  [Maven Plugin](http://plugins.jedit.org/plugins/?MavenPlugin).
-
-Die-hard command-line developers can use Maven directly by calling `mvn`
-in the project root.
-
-However you build the project, in the end you will have the `.jar` file
-(called *artifact* in Maven speak) in the `target/` subdirectory.
-
-To copy the artifact into the correct place, you can call
-`mvn -Dscijava.app.directory="/path/to/ImageJ2.app/"`.
-This will not only copy your artifact, but also all the dependencies.
-
-Developing code in an IDE is convenient, especially for debugging.
-To that end, this project contains a `main` method which launches ImageJ2,
-loads an image and runs the command.
-
-Since this project is intended as a starting point for your own
-developments, it is in the public domain.
-
-How to use this project as a starting point
+How to install this plugin
 ===========================================
 
-1. Visit [this link](https://github.com/imagej/example-imagej2-command/generate)
-   to create a new repository in your space using this one as a template.
+1. Make sure you have a working version of CellPose installed on the host computer (https://github.com/MouseLand/cellpose)
 
-2. [Clone your new repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository).
+2. Copy the Spot_Intensity.jar file into the plugins directory of your FIJI installation.
 
-3. Edit the `pom.xml` file, fixing all the lines labeled `FIXME`.
+3. Restart FIJI and SpotIntensity will appear in the list of plugins
 
-4. Remove the `GaussFiltering.java` file and add your own `.java` files
-   to `src/main/java/<package>/` (if you need supporting files such as icons
-   in the resulting `.jar` file, put them into `src/main/resources/`)
 
-5. Replace the contents of `README.md` with information about your project.
+How to use this plugin
+===========================================
+1. Run plugin
 
-6. Make your initial
-   [commit](https://docs.github.com/en/desktop/contributing-and-collaborating-using-github-desktop/making-changes-in-a-branch/committing-and-reviewing-changes-to-your-project) and
-   [push the results](https://docs.github.com/en/get-started/using-git/pushing-commits-to-a-remote-repository)!
+2. A dialogue box will open with a number of options.
 
-### Eclipse: To ensure that Maven copies the command to your ImageJ2 folder
+	(a)Browse to the location of the file to open.
+	(b)Set the colours for each channel as they were acquired.
+	(c)Select the colour channel with the labelled nuclei (it might work for other large round structures but this isn't tested)
+	(d)Set the size of the spot to measure
+	(e)Set the Path to Anaconda/Python enviroment (this is usually set when Cellpose is installed).
+	(f)Set the path to the Cellpose model, this can be any model capable of working with your image. Plugin was tested with CellposeSAM.
+	(g)Set the diameter of the nuclei, if CellposeSAM is used this variable is ignored but its very important for other Cellpose models.
 
-1. Go to _Run Configurations..._
-2. Choose _Maven Build_
-3. Add the following parameter:
-    - name: `scijava.app.directory`
-    - value: `/path/to/ImageJ2.app/`
+Acknowledgements
+===========================================
 
-This ensures that the final `.jar` file will also be copied
-into your ImageJ2 folder everytime you run the Maven build.
+CellposeSAM is used to segment the nuclei: Pachitariu, M., Rariden, M., & Stringer, C. (2025). Cellpose-SAM: superhuman generalization for cellular segmentation. bioRxiv.
+
+
+
